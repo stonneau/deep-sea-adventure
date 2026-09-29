@@ -400,7 +400,35 @@ function renderLocalSetup() {
   });
 }
 
-const BOARD_COLS = 8;
+// Column count adapts to the available width (recomputed on load/resize by
+// syncBoardColsAndMaybeRerender below) instead of being hardcoded, so the
+// snake board doesn't fall out of alignment on wide windows.
+const BOARD_MIN_COLS = 5;
+const BOARD_MAX_COLS = 16;
+let boardCols = 8;
+
+function computeBoardCols(availableWidth) {
+  const cellSpan = 58 + 8; // must match --cell-w + .board-row gap in style.css
+  const padding = 8; // .board-snake left+right padding, cancels the trailing gap math
+  const n = Math.floor((availableWidth - padding) / cellSpan);
+  return Math.max(BOARD_MIN_COLS, Math.min(BOARD_MAX_COLS, n || BOARD_MIN_COLS));
+}
+
+function syncBoardColsAndMaybeRerender() {
+  const el = document.querySelector(".board-snake");
+  if (!el || el.clientWidth === 0) return;
+  const next = computeBoardCols(el.clientWidth);
+  if (next !== boardCols) {
+    boardCols = next;
+    render();
+  }
+}
+
+let boardResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(boardResizeTimer);
+  boardResizeTimer = setTimeout(syncBoardColsAndMaybeRerender, 150);
+});
 
 function pipsHtml(level) {
   return `<div class="pips">${Array.from({ length: level }, () => `<span class="pip"></span>`).join("")}</div>`;
@@ -439,7 +467,7 @@ function renderBoard() {
   ];
 
   const rows = [];
-  for (let i = 0; i < items.length; i += BOARD_COLS) rows.push(items.slice(i, i + BOARD_COLS));
+  for (let i = 0; i < items.length; i += boardCols) rows.push(items.slice(i, i + boardCols));
 
   const rowsHtml = rows
     .map((row, rowIdx) => {
@@ -553,6 +581,7 @@ function renderGame() {
   `;
 
   attachHandlers();
+  syncBoardColsAndMaybeRerender();
 }
 
 function renderScoreTable() {

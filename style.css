@@ -163,7 +163,6 @@ input[type=text], input[type=number] {
 }
 .board-row.reversed {
   flex-direction: row-reverse;
-  align-self: flex-end;
 }
 .board-row::before {
   content: "";
