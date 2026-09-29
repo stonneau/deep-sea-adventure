@@ -121,19 +121,52 @@ input[type=text], input[type=number] {
   transition: width 0.3s ease;
 }
 
-.board-scroll {
-  overflow-x: auto;
-  padding-bottom: 10px;
-}
-.board-track {
+.board-snake {
+  --cell-w: 58px;
+  --row-gap: 26px;
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 10px 4px;
+  flex-direction: column;
+  gap: var(--row-gap);
+  overflow-x: auto;
+  padding: 14px 4px 10px;
+}
+.board-row {
+  display: inline-flex;
+  gap: 8px;
+  position: relative;
+  align-self: flex-start;
+}
+.board-row.reversed {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+}
+.board-row::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--cell-w) / 2);
+  right: calc(var(--cell-w) / 2);
+  height: 4px;
+  background: var(--accent);
+  opacity: 0.45;
+  transform: translateY(-50%);
+  z-index: 0;
+}
+.row-connector-down::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 4px;
+  height: calc(var(--row-gap) + 4px);
+  background: var(--accent);
+  opacity: 0.45;
+  transform: translateX(-50%);
+  z-index: 0;
 }
 .sub-cell, .slot-cell {
   flex: none;
-  width: 58px;
+  width: var(--cell-w);
   min-height: 78px;
   border-radius: 8px;
   display: flex;
@@ -141,6 +174,7 @@ input[type=text], input[type=number] {
   align-items: center;
   justify-content: flex-end;
   position: relative;
+  z-index: 1;
   padding: 4px 2px;
   font-size: 0.7rem;
 }

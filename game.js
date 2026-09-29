@@ -89,7 +89,6 @@ function startGame(playerNames) {
     finalTurnFlag: false,
     returnOrderLog: [],
     log: [],
-    screen: "game",
   };
 
   startRound(state.seatOrder[0]);
@@ -307,6 +306,15 @@ function endGame() {
   render();
 }
 
+// Single entry point for all player-triggered mutations. In online mode a
+// guest's clicks are relayed here on the host through the network layer
+// instead of running locally (see net.js: dispatchAction / canAct).
+function applyAction(kind, payload) {
+  if (kind === "declare") handleDeclare(payload);
+  else if (kind === "roll") handleRoll();
+  else if (kind === "action") handleAction(payload.type, payload.idx);
+}
+
 function totalScore(p) {
   return p.banked.reduce((s, b) => s + b.value, 0);
 }
@@ -334,29 +342,21 @@ function computeStandings() {
 }
 
 // ------------------------------------------------------------------ render --
+// The top-level screen router (menu / lobby / game) lives in net.js as
+// `render()`, since it needs to know about the network session. The
+// functions below render the "game" and "local setup" screens specifically.
 const app = document.getElementById("app");
 
-function render() {
-  if (!state) {
-    renderSetup();
-    return;
-  }
-  if (state.phase === "gameEnd") {
-    renderEndGame();
-    return;
-  }
-  renderGame();
-}
-
-function renderSetup() {
+function renderLocalSetup() {
   app.innerHTML = `
     <h1>Deep Sea Adventure — prototype</h1>
-    <p class="subtitle">Clone local (hotseat) pour tester les règles, hors plateforme BGA.</p>
+    <p class="subtitle">Partie locale (hotseat) : tout le monde joue sur le même écran.</p>
     <div class="card">
       <label for="numPlayers">Nombre de joueurs (${CONFIG.MIN_PLAYERS}-${CONFIG.MAX_PLAYERS})</label>
       <input type="number" id="numPlayers" min="${CONFIG.MIN_PLAYERS}" max="${CONFIG.MAX_PLAYERS}" value="4">
       <div id="nameFields"></div>
       <button id="startBtn" style="margin-top:14px;">Démarrer la partie</button>
+      <button id="backBtn" class="secondary" style="margin-top:14px;">Retour</button>
     </div>
   `;
   const numInput = document.getElementById("numPlayers");
@@ -377,36 +377,70 @@ function renderSetup() {
 
   document.getElementById("startBtn").addEventListener("click", () => {
     const names = Array.from(document.querySelectorAll(".nameInput")).map((inp) => inp.value.trim());
+    session.mode = "local";
+    session.myPlayerId = null;
+    session.isHost = false;
     startGame(names);
+    session.screen = "game";
+    render();
+  });
+  document.getElementById("backBtn").addEventListener("click", () => {
+    session.screen = "menu";
     render();
   });
 }
 
-function renderBoard() {
-  const cells = [`<div class="sub-cell">SUB</div>`];
-  state.line.forEach((slot, i) => {
-    const pos = i + 1;
-    const diversHere = state.players.filter((p) => p.pos === pos);
-    let tileClass = "slot-tile blank";
-    let label = "";
-    if (slot.type === "chip") {
-      tileClass = `slot-tile ${levelClass(slot.chip.level)}`;
-      label = "?";
-    } else if (slot.type === "stack") {
-      tileClass = `slot-tile stack ${levelClass(slot.chips[0].level)}`;
-      label = slot.chips.length;
-    }
-    cells.push(`
-      <div class="slot-cell">
-        <div class="divers-on-slot">
-          ${diversHere.map((p) => `<div class="diver-token${p.facing === "back" ? " facing-back" : ""}" style="background:${p.color}" title="${p.name}">${p.name[0].toUpperCase()}</div>`).join("")}
-        </div>
-        <div class="${tileClass}">${label}</div>
-        <div class="slot-index">${pos}</div>
+const BOARD_COLS = 8;
+
+function renderSlotCell(slot, pos) {
+  const diversHere = state.players.filter((p) => p.pos === pos);
+  let tileClass = "slot-tile blank";
+  let label = "";
+  if (slot.type === "chip") {
+    tileClass = `slot-tile ${levelClass(slot.chip.level)}`;
+    label = "?";
+  } else if (slot.type === "stack") {
+    tileClass = `slot-tile stack ${levelClass(slot.chips[0].level)}`;
+    label = slot.chips.length;
+  }
+  return `
+    <div class="slot-cell">
+      <div class="divers-on-slot">
+        ${diversHere.map((p) => `<div class="diver-token${p.facing === "back" ? " facing-back" : ""}" style="background:${p.color}" title="${p.name}">${p.name[0].toUpperCase()}</div>`).join("")}
       </div>
-    `);
-  });
-  return `<div class="board-scroll"><div class="board-track">${cells.join("")}</div></div>`;
+      <div class="${tileClass}">${label}</div>
+      <div class="slot-index">${pos}</div>
+    </div>
+  `;
+}
+
+// Snake layout: rows alternate direction (like a Chutes-and-Ladders board),
+// so the whole line is visible at once instead of one long horizontal strip.
+function renderBoard() {
+  const items = [
+    { html: `<div class="sub-cell">SUB</div>` },
+    ...state.line.map((slot, i) => ({ html: renderSlotCell(slot, i + 1) })),
+  ];
+
+  const rows = [];
+  for (let i = 0; i < items.length; i += BOARD_COLS) rows.push(items.slice(i, i + BOARD_COLS));
+
+  const rowsHtml = rows
+    .map((row, rowIdx) => {
+      const reversed = rowIdx % 2 === 1;
+      const isLastRow = rowIdx === rows.length - 1;
+      const cellsHtml = row
+        .map((item, idxInRow) => {
+          if (idxInRow !== row.length - 1 || isLastRow) return item.html;
+          // tag the last cell of a non-final row so CSS can draw the turn connector
+          return item.html.replace(/class="(sub-cell|slot-cell)"/, 'class="$1 row-connector-down"');
+        })
+        .join("");
+      return `<div class="board-row${reversed ? " reversed" : ""}">${cellsHtml}</div>`;
+    })
+    .join("");
+
+  return `<div class="board-snake">${rowsHtml}</div>`;
 }
 
 function renderPlayersStrip() {
@@ -415,53 +449,70 @@ function renderPlayersStrip() {
     .map((p) => `
       <div class="player-chip ${p.id === activeId ? "active" : ""} ${p.returned ? "returned" : ""}">
         <span class="swatch" style="background:${p.color}"></span>
-        <span>${p.name}</span>
+        <span>${p.name}${session.mode === "online" && p.id === session.myPlayerId ? " (vous)" : ""}</span>
         <span class="small-note">· porte ${p.carrying.length} · total ${totalScore(p)}</span>
       </div>
     `)
     .join("")}</div>`;
 }
 
+function isMyTurn() {
+  return session.mode !== "online" || currentPlayer().id === session.myPlayerId;
+}
+
 function renderTurnPanel() {
   const p = currentPlayer();
+  const mine = isMyTurn();
   let inner = "";
 
   if (state.phase === "declare") {
-    inner = `
-      <p>${p.name} porte ${p.carrying.length} trésor(s). Continuer à plonger ou faire demi-tour ?</p>
-      <button id="btnContinue">Plonger plus profond</button>
-      <button id="btnTurnBack" class="secondary">Faire demi-tour</button>
-    `;
+    if (mine) {
+      inner = `
+        <p>${p.name} porte ${p.carrying.length} trésor(s). Continuer à plonger ou faire demi-tour ?</p>
+        <button id="btnContinue">Plonger plus profond</button>
+        <button id="btnTurnBack" class="secondary">Faire demi-tour</button>
+      `;
+    } else {
+      inner = `<p class="small-note">En attente de ${p.name} (doit annoncer s'il/elle continue ou fait demi-tour)…</p>`;
+    }
   } else if (state.phase === "roll") {
-    inner = `
-      <p>${p.name} est ${p.facing === "out" ? "en descente" : "sur le chemin du retour"}, porte ${p.carrying.length} trésor(s).</p>
-      <button id="btnRoll">Lancer les dés</button>
-    `;
+    if (mine) {
+      inner = `
+        <p>${p.name} est ${p.facing === "out" ? "en descente" : "sur le chemin du retour"}, porte ${p.carrying.length} trésor(s).</p>
+        <button id="btnRoll">Lancer les dés</button>
+      `;
+    } else {
+      inner = `<p class="small-note">En attente de ${p.name} (doit lancer les dés)…</p>`;
+    }
   } else if (state.phase === "action") {
     const dice = state.lastDice
       ? `<div class="dice-row"><div class="die">${state.lastDice[0]}</div><div class="die">${state.lastDice[1]}</div></div>
          <p class="move-summary">Somme ${state.lastMove.sum} − ${state.lastMove.carried} porté(s) = ${state.lastMove.steps} case(s). Nouvelle position : ${state.lastMove.toPos === 0 ? "SUB" : state.lastMove.toPos}.</p>`
       : "";
 
-    let actions = "";
-    const slot = state.line[p.pos - 1];
-    const canPickup = slot.type === "chip" || slot.type === "stack";
-    const canDrop = slot.type === "blank" && p.carrying.length > 0;
-    actions += `<div>`;
-    if (canPickup) {
-      actions += `<button id="btnPickup">Ramasser le trésor</button>`;
+    if (mine) {
+      let actions = "";
+      const slot = state.line[p.pos - 1];
+      const canPickup = slot.type === "chip" || slot.type === "stack";
+      const canDrop = slot.type === "blank" && p.carrying.length > 0;
+      actions += `<div>`;
+      if (canPickup) {
+        actions += `<button id="btnPickup">Ramasser le trésor</button>`;
+      }
+      if (canDrop) {
+        p.carrying.forEach((unit, i) => {
+          actions += `<button class="secondary btnDrop" data-idx="${i}">Déposer trésor #${i + 1} (${unitChips(unit).length} pièce${unitChips(unit).length > 1 ? "s" : ""})</button>`;
+        });
+      }
+      actions += `<button class="secondary" id="btnNone">Ne rien faire</button>`;
+      actions += `</div>`;
+      inner = dice + actions;
+    } else {
+      inner = dice + `<p class="small-note">En attente de ${p.name} (choisit une action)…</p>`;
     }
-    if (canDrop) {
-      p.carrying.forEach((unit, i) => {
-        actions += `<button class="secondary btnDrop" data-idx="${i}">Déposer trésor #${i + 1} (${unitChips(unit).length} pièce${unitChips(unit).length > 1 ? "s" : ""})</button>`;
-      });
-    }
-    actions += `<button class="secondary" id="btnNone">Ne rien faire</button>`;
-    actions += `</div>`;
-    inner = dice + actions;
   }
 
-  return `<div class="card turn-panel"><h2>Tour de ${p.name}</h2>${inner}</div>`;
+  return `<div class="card turn-panel"><h2>Tour de ${p.name}${session.mode === "online" && mine ? " (vous)" : ""}</h2>${inner}</div>`;
 }
 
 function renderGame() {
@@ -526,26 +577,26 @@ function renderEndGame() {
             .join("")}
         </tbody>
       </table>
-      <button id="btnRestart" style="margin-top:14px;">Nouvelle partie</button>
+      ${
+        session.mode === "online" && !session.isHost
+          ? `<p class="small-note">Seul l'hôte peut relancer une partie.</p>`
+          : `<button id="btnRestart" style="margin-top:14px;">Nouvelle partie</button>`
+      }
     </div>
     ${renderScoreTable()}
   `;
-  document.getElementById("btnRestart").addEventListener("click", () => {
-    state = null;
-    render();
-  });
+  const restartBtn = document.getElementById("btnRestart");
+  if (restartBtn) restartBtn.addEventListener("click", resetToMenu);
 }
 
 function attachHandlers() {
   const byId = (id) => document.getElementById(id);
-  if (byId("btnContinue")) byId("btnContinue").addEventListener("click", () => handleDeclare(false));
-  if (byId("btnTurnBack")) byId("btnTurnBack").addEventListener("click", () => handleDeclare(true));
-  if (byId("btnRoll")) byId("btnRoll").addEventListener("click", handleRoll);
-  if (byId("btnPickup")) byId("btnPickup").addEventListener("click", () => handleAction("pickup"));
-  if (byId("btnNone")) byId("btnNone").addEventListener("click", () => handleAction("none"));
+  if (byId("btnContinue")) byId("btnContinue").addEventListener("click", () => dispatchAction("declare", false));
+  if (byId("btnTurnBack")) byId("btnTurnBack").addEventListener("click", () => dispatchAction("declare", true));
+  if (byId("btnRoll")) byId("btnRoll").addEventListener("click", () => dispatchAction("roll"));
+  if (byId("btnPickup")) byId("btnPickup").addEventListener("click", () => dispatchAction("action", { type: "pickup" }));
+  if (byId("btnNone")) byId("btnNone").addEventListener("click", () => dispatchAction("action", { type: "none" }));
   document.querySelectorAll(".btnDrop").forEach((btn) => {
-    btn.addEventListener("click", () => handleAction("drop", parseInt(btn.dataset.idx, 10)));
+    btn.addEventListener("click", () => dispatchAction("action", { type: "drop", idx: parseInt(btn.dataset.idx, 10) }));
   });
 }
-
-render();
