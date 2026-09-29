@@ -53,7 +53,7 @@ function makeRoomCode() {
 function shell(title, bodyHtml) {
   const app = document.getElementById("app");
   app.innerHTML = `
-    <h1>Deep Sea Adventure — prototype</h1>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
     <p class="subtitle">${title}</p>
     ${bodyHtml}
   `;
@@ -61,10 +61,10 @@ function shell(title, bodyHtml) {
 
 // ------------------------------------------------------------------ menus --
 function renderMenu() {
-  shell("Clone web (hotseat local ou en ligne), hors plateforme BGA.", `
+  shell(t("menuSubtitle"), `
     <div class="card">
-      <button id="btnLocal">Jouer en local (même écran)</button>
-      <button id="btnOnline" class="secondary">Jouer en ligne avec des amis</button>
+      <button id="btnLocal">${t("btnPlayLocal")}</button>
+      <button id="btnOnline" class="secondary">${t("btnPlayOnline")}</button>
     </div>
   `);
   document.getElementById("btnLocal").addEventListener("click", () => {
@@ -79,18 +79,18 @@ function renderMenu() {
 }
 
 function renderOnlineChoice() {
-  shell("Jouer en ligne", `
+  shell(t("onlineChoiceSubtitle"), `
     <div class="card">
       ${session.error ? `<p class="small-note" style="color:var(--danger)">${session.error}</p>` : ""}
-      <label for="hostNameInput">Ton nom (pour héberger une partie)</label>
-      <input type="text" id="hostNameInput" placeholder="Hôte">
-      <button id="btnHost" style="margin-top:10px;">Héberger une partie</button>
-      <button id="btnJoin" class="secondary">Rejoindre une partie</button>
-      <button id="btnBack" class="secondary">Retour</button>
+      <label for="hostNameInput">${t("hostNameLabel")}</label>
+      <input type="text" id="hostNameInput" placeholder="${t("hostNamePlaceholder")}">
+      <button id="btnHost" style="margin-top:10px;">${t("btnHostGame")}</button>
+      <button id="btnJoin" class="secondary">${t("btnJoinGame")}</button>
+      <button id="btnBack" class="secondary">${t("btnBack")}</button>
     </div>
   `);
   document.getElementById("btnHost").addEventListener("click", () => {
-    const name = document.getElementById("hostNameInput").value.trim() || "Hôte";
+    const name = document.getElementById("hostNameInput").value.trim() || t("hostNamePlaceholder");
     startHosting(name);
   });
   document.getElementById("btnJoin").addEventListener("click", () => {
@@ -109,7 +109,7 @@ function startHosting(hostName) {
   session.mode = "online";
   session.myPlayerId = 0;
   session.guestConns = [];
-  session.lobbyPlayers = [{ name: hostName || "Hôte", connId: "host" }];
+  session.lobbyPlayers = [{ name: hostName || t("hostNamePlaceholder"), connId: "host" }];
   session.error = null;
   session.roomCode = makeRoomCode();
   session.screen = "online-host-lobby";
@@ -138,7 +138,7 @@ function handleHostMessage(conn, msg) {
   if (msg.type === "join") {
     if (session.lobbyPlayers.length >= CONFIG.MAX_PLAYERS) return;
     session.guestConns.push(conn);
-    session.lobbyPlayers.push({ name: msg.name || `Joueur ${session.lobbyPlayers.length + 1}`, connId: conn.peer });
+    session.lobbyPlayers.push({ name: msg.name || t("playerPlaceholder", { n: session.lobbyPlayers.length + 1 }), connId: conn.peer });
     broadcastLobby();
     render();
   } else if (msg.type === "action") {
@@ -162,18 +162,18 @@ function broadcastState() {
 }
 
 function renderHostLobby() {
-  shell("Salon (hôte)", `
+  shell(t("hostLobbySubtitle"), `
     <div class="card">
-      <p>Code de partie : <strong style="font-size:1.3rem;letter-spacing:0.05em;">${session.roomCode || "…"}</strong></p>
-      <p class="small-note">Donne ce code à tes amis. Ils le saisissent dans "Rejoindre une partie".</p>
-      <h2 style="font-size:0.95rem;">Joueurs (${session.lobbyPlayers.length}/${CONFIG.MAX_PLAYERS})</h2>
+      <p>${t("roomCodeLabel")} <strong style="font-size:1.3rem;letter-spacing:0.05em;">${session.roomCode || "…"}</strong></p>
+      <p class="small-note">${t("roomCodeHint")}</p>
+      <h2 style="font-size:0.95rem;">${t("playersCountLabel", { n: session.lobbyPlayers.length, max: CONFIG.MAX_PLAYERS })}</h2>
       <div class="players-strip">
         ${session.lobbyPlayers
-          .map((p, i) => `<div class="player-chip"><span class="swatch" style="background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}"></span><span>${p.name}${i === 0 ? " (vous, hôte)" : ""}</span></div>`)
+          .map((p, i) => `<div class="player-chip"><span class="swatch" style="background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}"></span><span>${p.name}${i === 0 ? t("youHostTag") : ""}</span></div>`)
           .join("")}
       </div>
-      <button id="btnStart" style="margin-top:14px;" ${session.lobbyPlayers.length < CONFIG.MIN_PLAYERS ? "disabled" : ""}>Démarrer la partie</button>
-      <button id="btnCancel" class="secondary" style="margin-top:14px;">Annuler</button>
+      <button id="btnStart" style="margin-top:14px;" ${session.lobbyPlayers.length < CONFIG.MIN_PLAYERS ? "disabled" : ""}>${t("btnStartGame")}</button>
+      <button id="btnCancel" class="secondary" style="margin-top:14px;">${t("btnCancel")}</button>
     </div>
   `);
   document.getElementById("btnStart").addEventListener("click", () => {
@@ -184,20 +184,20 @@ function renderHostLobby() {
     render();
     broadcastState();
   });
-  document.getElementById("btnCancel").addEventListener("click", resetToMenu);
+  document.getElementById("btnCancel").addEventListener("click", () => resetToMenu());
 }
 
 // ------------------------------------------------------------------- guest --
 function renderGuestJoin() {
-  shell("Rejoindre une partie", `
+  shell(t("guestJoinSubtitle"), `
     <div class="card">
       ${session.error ? `<p class="small-note" style="color:var(--danger)">${session.error}</p>` : ""}
-      <label for="roomCodeInput">Code de partie</label>
-      <input type="text" id="roomCodeInput" placeholder="dsa-XXXXX">
-      <label for="guestNameInput">Ton nom</label>
-      <input type="text" id="guestNameInput" placeholder="Joueur">
-      <button id="btnJoinRoom" style="margin-top:14px;">Rejoindre</button>
-      <button id="btnBack" class="secondary" style="margin-top:14px;">Retour</button>
+      <label for="roomCodeInput">${t("roomCodeInputLabel")}</label>
+      <input type="text" id="roomCodeInput" placeholder="${t("roomCodePlaceholder")}">
+      <label for="guestNameInput">${t("yourNameLabel")}</label>
+      <input type="text" id="guestNameInput" placeholder="${t("yourNamePlaceholder")}">
+      <button id="btnJoinRoom" style="margin-top:14px;">${t("btnJoin")}</button>
+      <button id="btnBack" class="secondary" style="margin-top:14px;">${t("btnBack")}</button>
     </div>
   `);
   document.getElementById("btnBack").addEventListener("click", () => {
@@ -206,7 +206,7 @@ function renderGuestJoin() {
   });
   document.getElementById("btnJoinRoom").addEventListener("click", () => {
     const code = document.getElementById("roomCodeInput").value.trim();
-    const name = document.getElementById("guestNameInput").value.trim() || "Joueur";
+    const name = document.getElementById("guestNameInput").value.trim() || t("yourNamePlaceholder");
     if (!code) return;
     joinRoom(code, name);
   });
@@ -229,11 +229,10 @@ function joinRoom(roomCode, name) {
     });
     conn.on("data", (msg) => handleGuestMessage(msg));
     conn.on("close", () => {
-      session.error = "Connexion à l'hôte perdue.";
-      resetToMenu();
+      resetToMenu(t("errHostConnLost"));
     });
     conn.on("error", () => {
-      session.error = "Impossible de rejoindre cette partie (code invalide ou hôte injoignable).";
+      session.error = t("errJoinFailed");
       session.screen = "online-guest-join";
       render();
     });
@@ -254,18 +253,18 @@ function handleGuestMessage(msg) {
 }
 
 function renderGuestLobby() {
-  shell("Salon (en attente de l'hôte)", `
+  shell(t("guestLobbySubtitle"), `
     <div class="card">
-      <p class="small-note">Connecté. En attente que l'hôte démarre la partie…</p>
+      <p class="small-note">${t("guestLobbyWaiting")}</p>
       <div class="players-strip">
         ${session.lobbyPlayers
           .map((p, i) => `<div class="player-chip"><span class="swatch" style="background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}"></span><span>${p.name}</span></div>`)
           .join("")}
       </div>
-      <button id="btnCancel" class="secondary" style="margin-top:14px;">Annuler</button>
+      <button id="btnCancel" class="secondary" style="margin-top:14px;">${t("btnCancel")}</button>
     </div>
   `);
-  document.getElementById("btnCancel").addEventListener("click", resetToMenu);
+  document.getElementById("btnCancel").addEventListener("click", () => resetToMenu());
 }
 
 // --------------------------------------------------------------- plumbing --
@@ -282,7 +281,7 @@ function openPeer(customId, onReady) {
       openPeer(session.roomCode, onReady);
       return;
     }
-    session.error = "Erreur réseau (" + err.type + "). Réessaie.";
+    session.error = t("errNetwork", { type: err.type });
     session.screen = session.isHost ? "online-choice" : "online-guest-join";
     render();
   });
@@ -297,13 +296,13 @@ function dispatchAction(kind, payload) {
   if (session.mode === "online" && session.isHost) broadcastState();
 }
 
-function resetToMenu() {
+function resetToMenu(errorMsg) {
   if (session.peer) {
     try { session.peer.destroy(); } catch (e) { /* ignore */ }
   }
   state = null;
   session = {
-    screen: "menu",
+    screen: errorMsg ? "online-choice" : "menu",
     mode: null,
     isHost: false,
     myPlayerId: null,
@@ -312,7 +311,7 @@ function resetToMenu() {
     guestConns: [],
     lobbyPlayers: [],
     roomCode: null,
-    error: null,
+    error: errorMsg || null,
   };
   render();
 }

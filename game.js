@@ -65,7 +65,7 @@ function levelClass(level) {
 function startGame(playerNames) {
   const players = playerNames.map((name, i) => ({
     id: i,
-    name: name || `Joueur ${i + 1}`,
+    name: name || t("playerPlaceholder", { n: i + 1 }),
     color: PLAYER_COLORS[i % PLAYER_COLORS.length],
     pos: 0,
     facing: "out",
@@ -113,12 +113,15 @@ function startRound(startPlayerId) {
   state.turnOrder = state.seatOrder.slice(startIdx).concat(state.seatOrder.slice(0, startIdx));
   state.currentTurnIdx = 0;
 
-  addLog(`— Manche ${state.round} — plongée avec ${CONFIG.STARTING_AIR} d'air.`);
+  addLog("logRoundStart", { round: state.round, air: CONFIG.STARTING_AIR });
   beginTurn();
 }
 
-function addLog(msg) {
-  state.log.push(msg);
+// Log entries are stored as {key, vars} rather than rendered strings, so
+// each viewer can translate them in their own language at render time
+// (a French host and an English guest read the same log differently).
+function addLog(key, vars) {
+  state.log.push({ key, vars });
 }
 
 function currentPlayer() {
@@ -133,7 +136,7 @@ function beginTurn() {
   state.air -= p.carrying.length;
   if (state.air <= 0) {
     state.finalTurnFlag = true;
-    addLog(`L'air tombe à ${state.air} — dernier tour de la manche !`);
+    addLog("logAirOut", { air: state.air });
   }
 
   // Step 2: declare, only if relevant
@@ -149,9 +152,9 @@ function handleDeclare(turnBack) {
   if (turnBack) {
     p.declaredBack = true;
     p.facing = "back";
-    addLog(`${p.name} fait demi-tour vers le sous-marin.`);
+    addLog("logTurnBack", { name: p.name });
   } else {
-    addLog(`${p.name} continue de plonger.`);
+    addLog("logContinue", { name: p.name });
   }
   state.phase = "roll";
   render();
@@ -200,14 +203,21 @@ function handleRoll() {
   state.lastDice = [d1, d2];
   state.lastMove = { sum, carried: p.carrying.length, steps, fromPos, toPos };
 
-  addLog(
-    `${p.name} lance ${d1}+${d2}=${sum} (− ${p.carrying.length} porté${p.carrying.length > 1 ? "s" : ""}) → ${steps} case(s), de ${fromPos === 0 ? "SUB" : fromPos} à ${toPos === 0 ? "SUB" : toPos}.`
-  );
+  addLog("logRoll", {
+    name: p.name,
+    d1,
+    d2,
+    sum,
+    carried: p.carrying.length,
+    steps,
+    from: fromPos === 0 ? t("subLabel") : fromPos,
+    to: toPos === 0 ? t("subLabel") : toPos,
+  });
 
   if (toPos === 0) {
     p.returned = true;
     state.returnOrderLog.push(p.id);
-    addLog(`${p.name} est de retour au sous-marin.`);
+    addLog("logReturned", { name: p.name });
     endTurn();
     return;
   }
@@ -225,13 +235,13 @@ function handleAction(action, payload) {
     const unit = slot.type === "chip" ? { type: "chip", chip: slot.chip } : { type: "stack", chips: slot.chips };
     p.carrying.push(unit);
     state.line[slotIdx] = { type: "blank" };
-    addLog(`${p.name} ramasse un trésor (case ${p.pos}).`);
+    addLog("logPickup", { name: p.name, pos: p.pos });
   } else if (action === "drop") {
     const unit = p.carrying.splice(payload, 1)[0];
     state.line[slotIdx] = unit.type === "chip" ? { type: "chip", chip: unit.chip } : { type: "stack", chips: unit.chips };
-    addLog(`${p.name} dépose un trésor (case ${p.pos}).`);
+    addLog("logDrop", { name: p.name, pos: p.pos });
   } else {
-    addLog(`${p.name} ne fait rien.`);
+    addLog("logNone", { name: p.name });
   }
 
   endTurn();
@@ -276,7 +286,7 @@ function endRound() {
   for (const p of stranded) {
     lostQueue.push(...p.carrying);
     if (p.carrying.length) {
-      addLog(`${p.name} n'est pas rentré et perd ${p.carrying.length} trésor(s).`);
+      addLog("logStrandedLost", { name: p.name, n: p.carrying.length });
     }
     p.carrying = [];
   }
@@ -349,14 +359,14 @@ const app = document.getElementById("app");
 
 function renderLocalSetup() {
   app.innerHTML = `
-    <h1>Deep Sea Adventure — prototype</h1>
-    <p class="subtitle">Partie locale (hotseat) : tout le monde joue sur le même écran.</p>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
+    <p class="subtitle">${t("localSetupSubtitle")}</p>
     <div class="card">
-      <label for="numPlayers">Nombre de joueurs (${CONFIG.MIN_PLAYERS}-${CONFIG.MAX_PLAYERS})</label>
+      <label for="numPlayers">${t("numPlayersLabel", { min: CONFIG.MIN_PLAYERS, max: CONFIG.MAX_PLAYERS })}</label>
       <input type="number" id="numPlayers" min="${CONFIG.MIN_PLAYERS}" max="${CONFIG.MAX_PLAYERS}" value="4">
       <div id="nameFields"></div>
-      <button id="startBtn" style="margin-top:14px;">Démarrer la partie</button>
-      <button id="backBtn" class="secondary" style="margin-top:14px;">Retour</button>
+      <button id="startBtn" style="margin-top:14px;">${t("btnStartGame")}</button>
+      <button id="backBtn" class="secondary" style="margin-top:14px;">${t("btnBack")}</button>
     </div>
   `;
   const numInput = document.getElementById("numPlayers");
@@ -368,7 +378,7 @@ function renderLocalSetup() {
     nameFields.innerHTML = Array.from({ length: n }, (_, i) => `
       <div class="player-setup-row">
         <span class="swatch" style="background:${PLAYER_COLORS[i]}"></span>
-        <input type="text" data-idx="${i}" class="nameInput" placeholder="Joueur ${i + 1}">
+        <input type="text" data-idx="${i}" class="nameInput" placeholder="${t("playerPlaceholder", { n: i + 1 })}">
       </div>
     `).join("");
   }
@@ -424,7 +434,7 @@ function renderSlotCell(slot, pos) {
 // so the whole line is visible at once instead of one long horizontal strip.
 function renderBoard() {
   const items = [
-    { html: `<div class="sub-cell">SUB</div>` },
+    { html: `<div class="sub-cell">${t("subLabel")}</div>` },
     ...state.line.map((slot, i) => ({ html: renderSlotCell(slot, i + 1) })),
   ];
 
@@ -455,8 +465,8 @@ function renderPlayersStrip() {
     .map((p) => `
       <div class="player-chip ${p.id === activeId ? "active" : ""} ${p.returned ? "returned" : ""}">
         <span class="swatch" style="background:${p.color}"></span>
-        <span>${p.name}${session.mode === "online" && p.id === session.myPlayerId ? " (vous)" : ""}</span>
-        <span class="small-note">· porte ${p.carrying.length} · total ${totalScore(p)}</span>
+        <span>${p.name}${session.mode === "online" && p.id === session.myPlayerId ? t("youTag") : ""}</span>
+        <span class="small-note">· ${t("carriesLabel", { n: p.carrying.length })} · ${t("totalLabel", { n: totalScore(p) })}</span>
       </div>
     `)
     .join("")}</div>`;
@@ -474,26 +484,26 @@ function renderTurnPanel() {
   if (state.phase === "declare") {
     if (mine) {
       inner = `
-        <p>${p.name} porte ${p.carrying.length} trésor(s). Continuer à plonger ou faire demi-tour ?</p>
-        <button id="btnContinue">Plonger plus profond</button>
-        <button id="btnTurnBack" class="secondary">Faire demi-tour</button>
+        <p>${t("declarePrompt", { name: p.name, n: p.carrying.length })}</p>
+        <button id="btnContinue">${t("btnDiveDeeper")}</button>
+        <button id="btnTurnBack" class="secondary">${t("btnTurnBack")}</button>
       `;
     } else {
-      inner = `<p class="small-note">En attente de ${p.name} (doit annoncer s'il/elle continue ou fait demi-tour)…</p>`;
+      inner = `<p class="small-note">${t("waitDeclare", { name: p.name })}</p>`;
     }
   } else if (state.phase === "roll") {
     if (mine) {
       inner = `
-        <p>${p.name} est ${p.facing === "out" ? "en descente" : "sur le chemin du retour"}, porte ${p.carrying.length} trésor(s).</p>
-        <button id="btnRoll">Lancer les dés</button>
+        <p>${t("rollPrompt", { name: p.name, state: p.facing === "out" ? t("stateOut") : t("stateBack"), n: p.carrying.length })}</p>
+        <button id="btnRoll">${t("btnRollDice")}</button>
       `;
     } else {
-      inner = `<p class="small-note">En attente de ${p.name} (doit lancer les dés)…</p>`;
+      inner = `<p class="small-note">${t("waitRoll", { name: p.name })}</p>`;
     }
   } else if (state.phase === "action") {
     const dice = state.lastDice
       ? `<div class="dice-row"><div class="die">${state.lastDice[0]}</div><div class="die">${state.lastDice[1]}</div></div>
-         <p class="move-summary">Somme ${state.lastMove.sum} − ${state.lastMove.carried} porté(s) = ${state.lastMove.steps} case(s). Nouvelle position : ${state.lastMove.toPos === 0 ? "SUB" : state.lastMove.toPos}.</p>`
+         <p class="move-summary">${t("moveSummary", { sum: state.lastMove.sum, carried: state.lastMove.carried, steps: state.lastMove.steps, pos: state.lastMove.toPos === 0 ? t("subLabel") : state.lastMove.toPos })}</p>`
       : "";
 
     if (mine) {
@@ -503,32 +513,32 @@ function renderTurnPanel() {
       const canDrop = slot.type === "blank" && p.carrying.length > 0;
       actions += `<div>`;
       if (canPickup) {
-        actions += `<button id="btnPickup">Ramasser le trésor</button>`;
+        actions += `<button id="btnPickup">${t("btnPickup")}</button>`;
       }
       if (canDrop) {
         p.carrying.forEach((unit, i) => {
-          actions += `<button class="secondary btnDrop" data-idx="${i}">Déposer trésor #${i + 1} (${unitChips(unit).length} pièce${unitChips(unit).length > 1 ? "s" : ""})</button>`;
+          actions += `<button class="secondary btnDrop" data-idx="${i}">${t("btnDrop", { i: i + 1, n: unitChips(unit).length })}</button>`;
         });
       }
-      actions += `<button class="secondary" id="btnNone">Ne rien faire</button>`;
+      actions += `<button class="secondary" id="btnNone">${t("btnNothing")}</button>`;
       actions += `</div>`;
       inner = dice + actions;
     } else {
-      inner = dice + `<p class="small-note">En attente de ${p.name} (choisit une action)…</p>`;
+      inner = dice + `<p class="small-note">${t("waitAction", { name: p.name })}</p>`;
     }
   }
 
-  return `<div class="card turn-panel"><h2>Tour de ${p.name}${session.mode === "online" && mine ? " (vous)" : ""}</h2>${inner}</div>`;
+  return `<div class="card turn-panel"><h2>${t("turnOf", { name: p.name })}${session.mode === "online" && mine ? t("youTag") : ""}</h2>${inner}</div>`;
 }
 
 function renderGame() {
   const airPct = Math.max(0, Math.min(100, (state.air / CONFIG.STARTING_AIR) * 100));
   app.innerHTML = `
-    <h1>Deep Sea Adventure — prototype</h1>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
     <div class="card">
       <div class="hud">
-        <div class="stat"><span class="label">Manche</span><span class="value">${state.round}/${CONFIG.MAX_ROUNDS}</span></div>
-        <div class="stat"><span class="label">Air</span><span class="value">${Math.max(0, state.air)}</span></div>
+        <div class="stat"><span class="label">${t("hudRound")}</span><span class="value">${state.round}/${CONFIG.MAX_ROUNDS}</span></div>
+        <div class="stat"><span class="label">${t("hudAir")}</span><span class="value">${Math.max(0, state.air)}</span></div>
         <div class="air-bar-wrap"><div class="air-bar"><div class="air-bar-fill" style="width:${airPct}%"></div></div></div>
       </div>
       ${renderPlayersStrip()}
@@ -536,8 +546,8 @@ function renderGame() {
     <div class="card">${renderBoard()}</div>
     ${renderTurnPanel()}
     <div class="card">
-      <h2 style="margin-top:0;font-size:0.95rem;">Journal</h2>
-      <div class="log-panel">${state.log.slice().reverse().slice(0, 40).map((l) => `<div>${l}</div>`).join("")}</div>
+      <h2 style="margin-top:0;font-size:0.95rem;">${t("journalTitle")}</h2>
+      <div class="log-panel">${state.log.slice().reverse().slice(0, 40).map((l) => `<div>${t(l.key, l.vars)}</div>`).join("")}</div>
     </div>
     ${renderScoreTable()}
   `;
@@ -548,9 +558,9 @@ function renderGame() {
 function renderScoreTable() {
   return `
     <div class="card">
-      <h2 style="margin-top:0;font-size:0.95rem;">Scores</h2>
+      <h2 style="margin-top:0;font-size:0.95rem;">${t("scoresTitle")}</h2>
       <table class="score-table">
-        <thead><tr><th>Joueur</th>${Array.from({ length: CONFIG.MAX_ROUNDS }, (_, i) => `<th>Manche ${i + 1}</th>`).join("")}<th>Total</th></tr></thead>
+        <thead><tr><th>${t("tablePlayer")}</th>${Array.from({ length: CONFIG.MAX_ROUNDS }, (_, i) => `<th>${t("tableRound", { n: i + 1 })}</th>`).join("")}<th>${t("tableTotal")}</th></tr></thead>
         <tbody>
           ${state.players
             .map((p) => {
@@ -569,14 +579,16 @@ function renderScoreTable() {
 function renderEndGame() {
   const { ranked, winners } = computeStandings();
   const winnerText =
-    winners.length > 1 ? `Égalité entre ${winners.map((w) => w.name).join(" et ")} !` : `${winners[0].name} remporte la partie !`;
+    winners.length > 1
+      ? t("endTie", { names: winners.map((w) => w.name).join(` ${t("and")} `) })
+      : t("endWinner", { name: winners[0].name });
 
   app.innerHTML = `
-    <h1>Deep Sea Adventure — prototype</h1>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
     <div class="card">
       <div class="winner-banner">${winnerText}</div>
       <table class="score-table">
-        <thead><tr><th>Joueur</th><th>Total</th><th>Trésors de niveau 4</th></tr></thead>
+        <thead><tr><th>${t("tablePlayer")}</th><th>${t("tableTotal")}</th><th>${t("endHighLevel")}</th></tr></thead>
         <tbody>
           ${ranked
             .map((p) => `<tr><td>${p.name}</td><td><strong>${totalScore(p)}</strong></td><td>${highLevelCount(p)}</td></tr>`)
@@ -585,14 +597,14 @@ function renderEndGame() {
       </table>
       ${
         session.mode === "online" && !session.isHost
-          ? `<p class="small-note">Seul l'hôte peut relancer une partie.</p>`
-          : `<button id="btnRestart" style="margin-top:14px;">Nouvelle partie</button>`
+          ? `<p class="small-note">${t("onlyHostRestart")}</p>`
+          : `<button id="btnRestart" style="margin-top:14px;">${t("btnNewGame")}</button>`
       }
     </div>
     ${renderScoreTable()}
   `;
   const restartBtn = document.getElementById("btnRestart");
-  if (restartBtn) restartBtn.addEventListener("click", resetToMenu);
+  if (restartBtn) restartBtn.addEventListener("click", () => resetToMenu());
 }
 
 function attachHandlers() {
