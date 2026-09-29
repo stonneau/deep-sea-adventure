@@ -392,23 +392,29 @@ function renderLocalSetup() {
 
 const BOARD_COLS = 8;
 
+function pipsHtml(level) {
+  return `<div class="pips">${Array.from({ length: level }, () => `<span class="pip"></span>`).join("")}</div>`;
+}
+
 function renderSlotCell(slot, pos) {
   const diversHere = state.players.filter((p) => p.pos === pos);
   let tileClass = "slot-tile blank";
-  let label = "";
+  let inner = `<span class="blank-mark">×</span>`;
+  let extraAttr = "";
   if (slot.type === "chip") {
     tileClass = `slot-tile ${levelClass(slot.chip.level)}`;
-    label = "?";
+    inner = pipsHtml(slot.chip.level);
   } else if (slot.type === "stack") {
     tileClass = `slot-tile stack ${levelClass(slot.chips[0].level)}`;
-    label = slot.chips.length;
+    inner = pipsHtml(slot.chips[0].level);
+    extraAttr = ` data-count="${slot.chips.length}"`;
   }
   return `
     <div class="slot-cell">
       <div class="divers-on-slot">
         ${diversHere.map((p) => `<div class="diver-token${p.facing === "back" ? " facing-back" : ""}" style="background:${p.color}" title="${p.name}">${p.name[0].toUpperCase()}</div>`).join("")}
       </div>
-      <div class="${tileClass}">${label}</div>
+      <div class="${tileClass}"${extraAttr}>${inner}</div>
       <div class="slot-index">${pos}</div>
     </div>
   `;

@@ -7,10 +7,10 @@
   --accent: #ffb703;
   --danger: #e63946;
   --ok: #57cc99;
-  --lvl1: #6fcf97;
-  --lvl2: #56ccf2;
-  --lvl3: #bb6bd9;
-  --lvl4: #f2994a;
+  --lvl1: #9fe8d8;
+  --lvl2: #52c7ae;
+  --lvl3: #1f8f8c;
+  --lvl4: #163e6e;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -190,21 +190,68 @@ input[type=text], input[type=number] {
   border: 1px solid #1f5580;
 }
 .slot-tile {
-  width: 40px; height: 40px;
-  border-radius: 6px;
+  width: 44px; height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   color: #06202f;
   margin-bottom: 4px;
+  position: relative;
 }
-.slot-tile.blank { background: #1f5580; color: #9fc2dd; }
-.slot-tile.lvl1 { background: var(--lvl1); }
-.slot-tile.lvl2 { background: var(--lvl2); }
-.slot-tile.lvl3 { background: var(--lvl3); }
-.slot-tile.lvl4 { background: var(--lvl4); }
-.slot-tile.stack { border: 2px dashed #06202f; }
+/* Shapes mirror the physical chips: triangle / square / pentagon / hexagon
+   for levels 1-4, so a chip's level is readable even face-down. */
+.slot-tile.lvl1 { background: var(--lvl1); clip-path: polygon(50% 4%, 96% 96%, 4% 96%); }
+.slot-tile.lvl2 { background: var(--lvl2); border-radius: 4px; }
+.slot-tile.lvl3 { background: var(--lvl3); clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.slot-tile.lvl4 { background: var(--lvl4); clip-path: polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%); }
+.slot-tile.blank {
+  width: 44px; height: 44px;
+  border-radius: 4px;
+  background: #dcecea;
+  color: #06202f;
+}
+.slot-tile.stack::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px #06202f;
+}
+.slot-tile.stack {
+  box-shadow: 3px 3px 0 -1px rgba(6, 32, 47, 0.55), 3px 3px 0 0 rgba(6, 32, 47, 0.85);
+}
+
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 2px;
+  width: 60%;
+}
+.pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(6, 32, 47, 0.75);
+}
+.blank-mark {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #6f958f;
+  line-height: 1;
+}
+
 .slot-index { color: var(--muted); font-size: 0.65rem; }
 
 .divers-on-slot {
