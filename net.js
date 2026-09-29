@@ -82,12 +82,17 @@ function renderOnlineChoice() {
   shell("Jouer en ligne", `
     <div class="card">
       ${session.error ? `<p class="small-note" style="color:var(--danger)">${session.error}</p>` : ""}
-      <button id="btnHost">Héberger une partie</button>
+      <label for="hostNameInput">Ton nom (pour héberger une partie)</label>
+      <input type="text" id="hostNameInput" placeholder="Hôte">
+      <button id="btnHost" style="margin-top:10px;">Héberger une partie</button>
       <button id="btnJoin" class="secondary">Rejoindre une partie</button>
       <button id="btnBack" class="secondary">Retour</button>
     </div>
   `);
-  document.getElementById("btnHost").addEventListener("click", startHosting);
+  document.getElementById("btnHost").addEventListener("click", () => {
+    const name = document.getElementById("hostNameInput").value.trim() || "Hôte";
+    startHosting(name);
+  });
   document.getElementById("btnJoin").addEventListener("click", () => {
     session.screen = "online-guest-join";
     render();
@@ -99,12 +104,12 @@ function renderOnlineChoice() {
 }
 
 // -------------------------------------------------------------------- host --
-function startHosting() {
+function startHosting(hostName) {
   session.isHost = true;
   session.mode = "online";
   session.myPlayerId = 0;
   session.guestConns = [];
-  session.lobbyPlayers = [{ name: "Hôte", connId: "host" }];
+  session.lobbyPlayers = [{ name: hostName || "Hôte", connId: "host" }];
   session.error = null;
   session.roomCode = makeRoomCode();
   session.screen = "online-host-lobby";
