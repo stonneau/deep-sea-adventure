@@ -480,7 +480,12 @@ function renderBoard() {
           return item.html.replace(/class="(sub-cell|slot-cell)"/, 'class="$1 row-connector-down"');
         })
         .join("");
-      return `<div class="board-row${reversed ? " reversed" : ""}">${cellsHtml}</div>`;
+      // Every row gets the width of a FULL row (boardCols cells), even a
+      // short trailing one: otherwise a reversed partial row shrink-wraps
+      // to its own item count and its "packed" edge lands under the wrong
+      // column, breaking the connector alignment with the row above.
+      const rowWidth = `calc(${boardCols} * var(--cell-w) + ${boardCols - 1} * 8px)`;
+      return `<div class="board-row${reversed ? " reversed" : ""}" style="width:${rowWidth}">${cellsHtml}</div>`;
     })
     .join("");
 
