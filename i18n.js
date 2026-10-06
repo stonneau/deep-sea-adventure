@@ -47,7 +47,6 @@ const I18N = {
     hudAir: "Air",
     youTag: " (vous)",
     carriesLabel: "porte {n}",
-    carryValueLabel: "valeur {v}",
     totalLabel: "total {n}",
 
     turnOf: "Tour de {name}",
@@ -137,7 +136,6 @@ const I18N = {
     hudAir: "Air",
     youTag: " (you)",
     carriesLabel: "carrying {n}",
-    carryValueLabel: "value {v}",
     totalLabel: "total {n}",
 
     turnOf: "{name}'s turn",

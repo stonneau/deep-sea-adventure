@@ -502,7 +502,7 @@ function renderPlayersStrip() {
       <div class="player-chip ${p.id === activeId ? "active" : ""} ${p.returned ? "returned" : ""}">
         <span class="swatch" style="background:${p.color}"></span>
         <span>${p.name}${session.mode === "online" && p.id === session.myPlayerId ? t("youTag") : ""}</span>
-        <span class="small-note">· ${t("carriesLabel", { n: p.carrying.length })} · ${t("carryValueLabel", { v: p.carrying.reduce((s, u) => s + unitValue(u), 0) })} · ${t("totalLabel", { n: totalScore(p) })}</span>
+        <span class="small-note">· ${t("carriesLabel", { n: p.carrying.length })} · ${t("totalLabel", { n: totalScore(p) })}</span>
       </div>
     `)
     .join("")}</div>`;
