@@ -6,7 +6,6 @@
 // whatever state the host broadcasts back. No backend server involved.
 
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // no 0/O/1/I/L
-const ROOM_CODE_PREFIX = "dsa-";
 
 let session = {
   screen: "menu", // menu | local-setup | online-choice | online-host-lobby | online-guest-join | online-guest-lobby | game
@@ -83,7 +82,7 @@ function render() {
 }
 
 function makeRoomCode() {
-  let code = ROOM_CODE_PREFIX;
+  let code = "";
   for (let i = 0; i < 5; i++) code += ROOM_CODE_ALPHABET[Math.floor(Math.random() * ROOM_CODE_ALPHABET.length)];
   return code;
 }
@@ -245,7 +244,7 @@ function renderGuestJoin() {
   });
   document.getElementById("btnJoinRoom").addEventListener("click", () => {
     unlockAudio();
-    const code = document.getElementById("roomCodeInput").value.trim();
+    const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
     const name = document.getElementById("guestNameInput").value.trim() || t("yourNamePlaceholder");
     if (!code) return;
     joinRoom(code, name);

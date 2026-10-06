@@ -31,7 +31,7 @@ const I18N = {
 
     guestJoinSubtitle: "Rejoindre une partie",
     roomCodeInputLabel: "Code de partie",
-    roomCodePlaceholder: "dsa-XXXXX",
+    roomCodePlaceholder: "XXXXX",
     yourNameLabel: "Ton nom",
     yourNamePlaceholder: "Joueur",
     btnJoin: "Rejoindre",
@@ -120,7 +120,7 @@ const I18N = {
 
     guestJoinSubtitle: "Join a game",
     roomCodeInputLabel: "Game code",
-    roomCodePlaceholder: "dsa-XXXXX",
+    roomCodePlaceholder: "XXXXX",
     yourNameLabel: "Your name",
     yourNamePlaceholder: "Player",
     btnJoin: "Join",
