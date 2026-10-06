@@ -94,6 +94,7 @@ const I18N = {
     subLabel: "SUB",
     and: "et",
     officialPageLink: "Page officielle du jeu ↗",
+    rulesPdfLink: "Règles (transcription communautaire) ↗",
   },
   en: {
     menuSubtitle: "Web clone (local hotseat or online), outside the BGA platform.",
@@ -184,6 +185,7 @@ const I18N = {
     subLabel: "SUB",
     and: "and",
     officialPageLink: "Official game page ↗",
+    rulesPdfLink: "Rules (community transcription) ↗",
   },
 };
 
@@ -226,10 +228,12 @@ function setLang(lang) {
 }
 
 const OFFICIAL_GAME_URL = "https://oinkgames.com/en/games/analog/deep-sea-adventure/";
+const RULES_PDF_URL = "https://northstreetgames.com/images/Rulebooks/Deep-Sea-Adventure-Rules.pdf";
 
 function topActionsHtml() {
   return `<div class="top-actions">
     <a class="rules-link" href="${OFFICIAL_GAME_URL}" target="_blank" rel="noopener">${t("officialPageLink")}</a>
+    <a class="rules-link" href="${RULES_PDF_URL}" target="_blank" rel="noopener">${t("rulesPdfLink")}</a>
     <div class="lang-switch">
       <button class="lang-btn${currentLang === "fr" ? " active" : ""}" onclick="setLang('fr')">FR</button>
       <button class="lang-btn${currentLang === "en" ? " active" : ""}" onclick="setLang('en')">EN</button>
