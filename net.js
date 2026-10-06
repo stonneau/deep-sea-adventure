@@ -19,7 +19,42 @@ let session = {
   lobbyPlayers: [], // [{name, connId}], index 0 is always the host
   roomCode: null,
   error: null,
+  lastBeepKey: null,
 };
+
+let audioCtx = null;
+
+function unlockAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {
+    /* no audio support */
+  }
+}
+
+function playTurnBeep() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = 880;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.3);
+}
+
+function notifyMyTurn() {
+  if (session.mode !== "online" || state.phase === "gameEnd" || !isMyTurn()) return;
+  const key = `${state.gameId}:${state.turnNo}`;
+  if (session.lastBeepKey === key) return;
+  session.lastBeepKey = key;
+  playTurnBeep();
+}
 
 function render() {
   switch (session.screen) {
@@ -40,7 +75,10 @@ function render() {
         session.screen = "menu";
         return renderMenu();
       }
-      return state.phase === "gameEnd" ? renderEndGame() : renderGame();
+      if (state.phase === "gameEnd") return renderEndGame();
+      renderGame();
+      notifyMyTurn();
+      return;
   }
 }
 
@@ -90,6 +128,7 @@ function renderOnlineChoice() {
     </div>
   `);
   document.getElementById("btnHost").addEventListener("click", () => {
+    unlockAudio();
     const name = document.getElementById("hostNameInput").value.trim() || t("hostNamePlaceholder");
     startHosting(name);
   });
@@ -205,6 +244,7 @@ function renderGuestJoin() {
     render();
   });
   document.getElementById("btnJoinRoom").addEventListener("click", () => {
+    unlockAudio();
     const code = document.getElementById("roomCodeInput").value.trim();
     const name = document.getElementById("guestNameInput").value.trim() || t("yourNamePlaceholder");
     if (!code) return;
@@ -312,6 +352,7 @@ function resetToMenu(errorMsg) {
     lobbyPlayers: [],
     roomCode: null,
     error: errorMsg || null,
+    lastBeepKey: null,
   };
   render();
 }

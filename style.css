@@ -344,8 +344,6 @@ input[type=text], input[type=number] {
   overflow-y: auto;
   font-size: 0.8rem;
   color: var(--muted);
-  display: flex;
-  flex-direction: column-reverse;
 }
 .log-panel div { padding: 2px 0; border-bottom: 1px dashed #1f5580; }
 
