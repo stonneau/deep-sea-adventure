@@ -6,6 +6,11 @@
 // whatever state the host broadcasts back. No backend server involved.
 
 const ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // no 0/O/1/I/L
+const PEER_ID_PREFIX = "dsa-"; // namespaces our ids on the shared PeerJS broker, hidden from players
+
+function peerIdFor(roomCode) {
+  return PEER_ID_PREFIX + roomCode;
+}
 
 let session = {
   screen: "menu", // menu | local-setup | online-choice | online-host-lobby | online-guest-join | online-guest-lobby | game
@@ -153,7 +158,7 @@ function startHosting(hostName) {
   session.screen = "online-host-lobby";
   render();
 
-  openPeer(session.roomCode, (peer) => {
+  openPeer(peerIdFor(session.roomCode), (peer) => {
     peer.on("connection", (conn) => {
       conn.on("open", () => {
         conn.on("data", (msg) => handleHostMessage(conn, msg));
@@ -258,7 +263,7 @@ function joinRoom(roomCode, name) {
   session.lobbyPlayers = [];
 
   openPeer(null, (peer) => {
-    const conn = peer.connect(roomCode, { reliable: true });
+    const conn = peer.connect(peerIdFor(roomCode), { reliable: true });
     session.hostConn = conn;
 
     conn.on("open", () => {
@@ -317,7 +322,7 @@ function openPeer(customId, onReady) {
       // extremely unlikely collision on the shared broker; just retry with a new code
       session.roomCode = makeRoomCode();
       peer.destroy();
-      openPeer(session.roomCode, onReady);
+      openPeer(peerIdFor(session.roomCode), onReady);
       return;
     }
     session.error = t("errNetwork", { type: err.type });
