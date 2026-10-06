@@ -95,7 +95,7 @@ function makeRoomCode() {
 function shell(title, bodyHtml) {
   const app = document.getElementById("app");
   app.innerHTML = `
-    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${topActionsHtml()}</div>
     <p class="subtitle">${title}</p>
     ${bodyHtml}
   `;

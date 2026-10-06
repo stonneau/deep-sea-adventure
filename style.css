@@ -36,6 +36,18 @@ body {
   gap: 12px;
 }
 
+.top-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rules-link {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: underline;
+  white-space: nowrap;
+}
 .lang-switch {
   flex: none;
   display: flex;

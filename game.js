@@ -362,7 +362,7 @@ const app = document.getElementById("app");
 
 function renderLocalSetup() {
   app.innerHTML = `
-    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${topActionsHtml()}</div>
     <p class="subtitle">${t("localSetupSubtitle")}</p>
     <div class="card">
       <label for="numPlayers">${t("numPlayersLabel", { min: CONFIG.MIN_PLAYERS, max: CONFIG.MAX_PLAYERS })}</label>
@@ -570,7 +570,7 @@ function renderTurnPanel() {
 function renderGame() {
   const airPct = Math.max(0, Math.min(100, (state.air / CONFIG.STARTING_AIR) * 100));
   app.innerHTML = `
-    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${topActionsHtml()}</div>
     <div class="card">
       <div class="hud">
         <div class="stat"><span class="label">${t("hudRound")}</span><span class="value">${state.round}/${CONFIG.MAX_ROUNDS}</span></div>
@@ -621,7 +621,7 @@ function renderEndGame() {
       : t("endWinner", { name: winners[0].name });
 
   app.innerHTML = `
-    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${langSwitcherHtml()}</div>
+    <div class="top-row"><h1>Deep Sea Adventure — prototype</h1>${topActionsHtml()}</div>
     <div class="card">
       <div class="winner-banner">${winnerText}</div>
       <table class="score-table">

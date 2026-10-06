@@ -93,6 +93,7 @@ const I18N = {
 
     subLabel: "SUB",
     and: "et",
+    officialPageLink: "Page officielle du jeu ↗",
   },
   en: {
     menuSubtitle: "Web clone (local hotseat or online), outside the BGA platform.",
@@ -182,6 +183,7 @@ const I18N = {
 
     subLabel: "SUB",
     and: "and",
+    officialPageLink: "Official game page ↗",
   },
 };
 
@@ -223,9 +225,14 @@ function setLang(lang) {
   render();
 }
 
-function langSwitcherHtml() {
-  return `<div class="lang-switch">
-    <button class="lang-btn${currentLang === "fr" ? " active" : ""}" onclick="setLang('fr')">FR</button>
-    <button class="lang-btn${currentLang === "en" ? " active" : ""}" onclick="setLang('en')">EN</button>
+const OFFICIAL_GAME_URL = "https://oinkgames.com/en/games/analog/deep-sea-adventure/";
+
+function topActionsHtml() {
+  return `<div class="top-actions">
+    <a class="rules-link" href="${OFFICIAL_GAME_URL}" target="_blank" rel="noopener">${t("officialPageLink")}</a>
+    <div class="lang-switch">
+      <button class="lang-btn${currentLang === "fr" ? " active" : ""}" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn${currentLang === "en" ? " active" : ""}" onclick="setLang('en')">EN</button>
+    </div>
   </div>`;
 }
